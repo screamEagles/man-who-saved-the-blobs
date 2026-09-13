@@ -9,7 +9,13 @@ public class Slimeny : MonoBehaviour
 
     public GameObject player;
     public float speed = 2f;
-    public float detectionRadius = 5f;  // How far the enemy can see the player
+    public float detectionRadius = 5f;
+
+    [Header("Bite Zone (local space, +X = out of the mouth)")]
+    [Tooltip("Centre of the bite rectangle, relative to Slimeny's pivot.")]
+    [SerializeField] private Vector2 biteZoneOffset = new Vector2(0.6f, 0f);
+    [Tooltip("Full width and height of the bite rectangle.")]
+    [SerializeField] private Vector2 biteZoneSize = new Vector2(0.8f, 0.5f);
 
     public bool _hasTarget = false;
 
@@ -23,18 +29,14 @@ public class Slimeny : MonoBehaviour
         }
     }
 
+    public bool PlayerInBiteZone { get; private set; }
+
     public bool CanMove
     {
         get
         {
-            try
-            {
-                return animator.GetBool("canMove");
-            }
-            catch
-            {
-                return true;
-            }
+            try { return animator.GetBool("canMove"); }
+            catch { return true; }
         }
     }
 
@@ -49,37 +51,70 @@ public class Slimeny : MonoBehaviour
 
     void Update()
     {
-        // Distance-based detection for approaching
-        if (playerTransform != null)
-        {
-            float distance = Vector2.Distance(transform.position, playerTransform.position);
-            HasTarget = distance < detectionRadius; // going to bite the player based on this
-                                                    // I don't want a radius, I want rectangle coming out of the Slimeny's mouth which will be resized on playtest.
-                                                    // by Distance, the player could be next to the Slimeny's mouth, behind Slimeny, or up/down the Slimeny. What I want is only to be next to the Slimeny's mouth.
+        if (playerTransform == null) return;
 
-            // I am thinking about using X-axis only.
-            // I also think that if I somehow only modify the x-axis, the behind will be considered at a commensurate rate.
-        }
+        // --- Approach detection (still a radius, that's fine) ---
+        Vector2 mouthOrigin = transform.TransformPoint(biteZoneOffset);
+        float distance = Vector2.Distance(mouthOrigin, playerTransform.position);
+        HasTarget = distance < detectionRadius;
 
-        // The biteZone is still used for attacking logic elsewhere
+        // --- Bite detection (rectangle in front of the mouth) ---
+        PlayerInBiteZone = CheckBiteZone();
+    }
+
+    private bool CheckBiteZone()
+    {
+        // Convert the player's world position into Slimeny's local space.
+        // After flipping (localScale.x = -1), local +X is still "forward",
+        // so the box always comes out of the mouth.
+        Vector3 local = transform.InverseTransformPoint(playerTransform.position);
+
+        float halfW = biteZoneSize.x * 0.5f;
+        float halfH = biteZoneSize.y * 0.5f;
+
+        bool insideX = Mathf.Abs(local.x - biteZoneOffset.x) <= halfW;
+        bool insideY = Mathf.Abs(local.y - biteZoneOffset.y) <= halfH;
+
+        return insideX && insideY;
     }
 
     void FixedUpdate()
     {
         if (playerTransform == null)
         {
-            if (player != null)
-                playerTransform = player.transform;
-            else
-                return;
+            if (player != null) playerTransform = player.transform;
+            else return;
+        }
+
+        // --- Flip sprite so it faces the player on the X axis ---
+        float dx = playerTransform.position.x - transform.position.x;
+        if (Mathf.Abs(dx) > 0.01f)
+        {
+            Vector3 scale = transform.localScale;
+            scale.x = -(Mathf.Sign(dx) * Mathf.Abs(scale.x));
+            transform.localScale = scale;
         }
 
         if (CanMove)
         {
-            // monving towards the player based on this
             Vector2 direction = (playerTransform.position - transform.position).normalized;
             Vector2 targetPosition = rb.position + direction * speed * Time.fixedDeltaTime;
             rb.MovePosition(targetPosition);
         }
+    }
+
+    // Draw the bite zone in the Scene view so you can tune the numbers.
+    private void OnDrawGizmosSelected()
+    {
+        Matrix4x4 old = Gizmos.matrix;
+        Gizmos.matrix = transform.localToWorldMatrix;
+
+        Gizmos.color = new Color(1f, 0.25f, 0.25f, 0.35f);
+        Gizmos.DrawCube(biteZoneOffset, biteZoneSize);
+
+        Gizmos.color = new Color(1f, 0.25f, 0.25f, 1f);
+        Gizmos.DrawWireCube(biteZoneOffset, biteZoneSize);
+
+        Gizmos.matrix = old;
     }
 }

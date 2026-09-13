@@ -11366,6 +11366,8 @@ MonoBehaviour:
   player: {fileID: 991584001}
   speed: 1
   detectionRadius: 1.5
+  biteZoneOffset: {x: -0.79, y: -0.51}
+  biteZoneSize: {x: 0.7, y: 0.2}
   _hasTarget: 0
 --- !u!50 &1918118245
 Rigidbody2D:
