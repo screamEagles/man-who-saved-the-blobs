@@ -1,15 +1,15 @@
-- time spent in surviving the place (needs working on UI, otherwise ready to be integrated)
-- apply knockback to the player when chomped
+- time spent in surviving the place (needs working on UI, otherwise ready to be integrated); 30min
+- apply knockback to the player when chomped; 1hr
 - player morale
-  - goes down consistently
-  - becomes significantly down when chomped
-  - increases when successfully killing a slime
-- player death
-- player attack
-- enemy death (only one hit required)
-- player score
-- make the enemy a prefab with variations in size and damage (both are directly proportional to each other)
-- enemy spawning at regular intervals
-- paint the environment
-- make a text appear briefly stating the instructions before starting the game
-- make a pause button
+  - goes down consistently; 45min
+  - becomes significantly down when chomped; 1hr
+  - increases when successfully killing a slime 1hr
+- player death; 1hr
+- player attack; 1hr
+- enemy death (only one hit required); 1hr
+- player score; 1hr
+- make the enemy a prefab with variations in size and damage (both are directly proportional to each other); 1hr
+- enemy spawning at regular intervals; 1hr
+- paint the environment; 30min
+- make a text appear briefly stating the instructions before starting the game; 1hr
+- make a pause button; 1hr
