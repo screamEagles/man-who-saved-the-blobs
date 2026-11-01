@@ -7,7 +7,9 @@
 - player death
 - player attack
 - enemy death (only one hit required)
+- player score
 - make the enemy a prefab with variations in size and damage (both are directly proportional to each other)
 - enemy spawning at regular intervals
 - paint the environment
 - make a text appear briefly stating the instructions before starting the game
+- make a pause button
