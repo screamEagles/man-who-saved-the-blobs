@@ -1,4 +1,4 @@
-- time spent in surviving the place
+- time spent in surviving the place (needs working on UI, otherwise ready to be integrated)
 - apply knockback to the player when chomped
 - player morale
   - goes down consistently

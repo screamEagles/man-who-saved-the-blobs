@@ -22,7 +22,7 @@ public class Stopwatch : MonoBehaviour
             currentTime += Time.deltaTime;
         }
 
-        displayTime.text = $"{Mathf.FloorToInt(currentTime / 60)}:{Mathf.FloorToInt(currentTime % 60)}";
+        displayTime.text = $"{Mathf.FloorToInt(currentTime / 60):00}:{Mathf.FloorToInt(currentTime % 60):00}";
     }
 
     public void StartTime()
