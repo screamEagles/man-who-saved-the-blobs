@@ -1,0 +1,13 @@
+- time spent in surviving the place
+- apply knockback to the player when chomped
+- player morale
+  - goes down consistently
+  - becomes significantly down when chomped
+  - increases when successfully killing a slime
+- player death
+- player attack
+- enemy death (only one hit required)
+- make the enemy a prefab with variations in size and damage (both are directly proportional to each other)
+- enemy spawning at regular intervals
+- paint the environment
+- make a text appear briefly stating the instructions before starting the game

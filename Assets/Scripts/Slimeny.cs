@@ -2,14 +2,14 @@ using UnityEngine;
 
 public class Slimeny : MonoBehaviour
 {
-    public DetectionZone biteZone;  // For attacking (kept as-is)
+    // public DetectionZone biteZone;  // For attacking (kept as-is)
     Animator animator;
     Rigidbody2D rb;
     Transform playerTransform;
 
     public GameObject player;
     public float speed = 2f;
-    public float detectionRadius = 5f;
+    public float detectionRadius = 0.5f;
 
     [Header("Bite Zone (local space, +X = out of the mouth)")]
     [Tooltip("Centre of the bite rectangle, relative to Slimeny's pivot.")]
@@ -60,6 +60,7 @@ public class Slimeny : MonoBehaviour
 
         // --- Bite detection (rectangle in front of the mouth) ---
         PlayerInBiteZone = CheckBiteZone();
+        // HasTarget = PlayerInBiteZone;
     }
 
     private bool CheckBiteZone()
