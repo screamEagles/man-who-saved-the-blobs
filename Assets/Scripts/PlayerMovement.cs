@@ -136,3 +136,32 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 }
+
+// private bool isKnockedBack;
+// private float knockbackEndTime;
+
+// void Update()
+// {
+//     // Let physics own the velocity while being knocked back
+//     if (isKnockedBack)
+//     {
+//         if (Time.time >= knockbackEndTime)
+//             isKnockedBack = false;
+//         else
+//             return;
+//     }
+
+//     if (!isAttacking)
+//         rb.linearVelocity = moveInput * moveSpeed;
+//     else
+//         rb.linearVelocity = Vector2.zero;
+// }
+
+// public void ApplyKnockback(Vector2 direction, float force, float duration)
+// {
+//     isKnockedBack = true;
+//     knockbackEndTime = Time.time + duration;
+
+//     rb.linearVelocity = Vector2.zero;
+//     rb.AddForce(direction.normalized * force, ForceMode2D.Impulse);
+// }

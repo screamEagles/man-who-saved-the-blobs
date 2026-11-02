@@ -1,5 +1,6 @@
 - time spent in surviving the place (needs working on UI, otherwise ready to be integrated); 30min
 - apply knockback to the player when chomped; 1hr
+  - make the player turn a bit transparent
 - player morale
   - goes down consistently; 45min
   - becomes significantly down when chomped; 1hr

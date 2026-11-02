@@ -8,8 +8,6 @@ public class DetectionZone : MonoBehaviour
 
     private GameObject player;
 
-
-
     private void Awake()
     {
         col = GetComponent<Collider2D>();
