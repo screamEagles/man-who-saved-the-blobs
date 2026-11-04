@@ -6,6 +6,12 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float attackCooldown = 0.1f; // Prevent spam
 
+    // Cached animator parameter hashes (avoids string hashing on every call)
+    // they are in the AnimationStrings file
+
+    private bool isKnockedBack;
+    private float knockbackEndTime;
+
     private Rigidbody2D rb;
     private Vector2 moveInput;
     private Animator animator;
@@ -13,7 +19,7 @@ public class PlayerMovement : MonoBehaviour
     private bool isAttacking;
     private Vector2 lastDirection = Vector2.down; // Store last valid direction
 
-    void Start()
+    void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
@@ -21,15 +27,17 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // Only allow movement if not attacking
-        if (!isAttacking)
+        // Let physics own the velocity while being knocked back
+        if (isKnockedBack)
         {
-            rb.linearVelocity = moveInput * moveSpeed;
+            if (Time.time >= knockbackEndTime)
+                isKnockedBack = false;
+            else
+                return;
         }
-        else
-        {
-            rb.linearVelocity = Vector2.zero; // Stop movement during attack
-        }
+
+        // Stop movement during attack, otherwise follow input
+        rb.linearVelocity = isAttacking ? Vector2.zero : moveInput * moveSpeed;
     }
 
     public void Move(InputAction.CallbackContext context)
@@ -38,16 +46,14 @@ public class PlayerMovement : MonoBehaviour
         if (context.canceled)
         {
             moveInput = Vector2.zero;
-            animator.SetBool("isWalking", false);
+            animator.SetBool(AnimationStrings.IsWalking, false);
 
-            // When keys are released, keep LastInputX/Y as the last direction
-            // (Don't set them to zero - we want to remember the facing direction)
-
-            // Only update InputX/Y if not attacking
+            // Keep LastInputX/Y so we remember the facing direction.
+            // Only update InputX/Y if not attacking.
             if (!isAttacking)
             {
-                animator.SetFloat("InputX", 0);
-                animator.SetFloat("InputY", 0);
+                animator.SetFloat(AnimationStrings.InputX, 0f);
+                animator.SetFloat(AnimationStrings.InputY, 0f);
             }
             return;
         }
@@ -57,23 +63,19 @@ public class PlayerMovement : MonoBehaviour
 
         moveInput = context.ReadValue<Vector2>();
 
-        // Update animator parameters
-        animator.SetFloat("InputX", moveInput.x);
-        animator.SetFloat("InputY", moveInput.y);
+        animator.SetFloat(AnimationStrings.InputX, moveInput.x);
+        animator.SetFloat(AnimationStrings.InputY, moveInput.y);
 
-        // Save the last valid direction when moving
         if (moveInput != Vector2.zero)
         {
             lastDirection = moveInput;
-            animator.SetBool("isWalking", true);
-
-            // Update LastInputX/Y with the current movement direction
-            animator.SetFloat("LastInputX", moveInput.x);
-            animator.SetFloat("LastInputY", moveInput.y);
+            animator.SetBool(AnimationStrings.IsWalking, true);
+            animator.SetFloat(AnimationStrings.LastInputX, moveInput.x);
+            animator.SetFloat(AnimationStrings.LastInputY, moveInput.y);
         }
         else
         {
-            animator.SetBool("isWalking", false);
+            animator.SetBool(AnimationStrings.IsWalking, false);
         }
     }
 
@@ -82,86 +84,42 @@ public class PlayerMovement : MonoBehaviour
         // Only trigger on press, not on hold or release
         if (!context.started) return;
 
-        // Check cooldown
-        if (Time.time - lastAttackTime < attackCooldown) return;
-
-        // Don't attack if already attacking
+        // Don't attack if already attacking, or if still on cooldown
         if (isAttacking) return;
+        float now = Time.time;
+        if (now - lastAttackTime < attackCooldown) return;
 
-        // Start attack
         isAttacking = true;
-        lastAttackTime = Time.time;
+        lastAttackTime = now;
 
-        // Set attack animation parameters
-        animator.SetBool("isAttacking", true);
+        animator.SetBool(AnimationStrings.IsAttacking, true);
 
-        // Determine attack direction:
-        // 1. If moving, use moveInput
-        // 2. If standing still, use lastDirection (last valid movement direction)
-        // 3. If no last direction, default to down
-        Vector2 attackDirection = moveInput;
-        if (attackDirection == Vector2.zero)
-        {
-            attackDirection = lastDirection;
+        // Moving -> use moveInput; standing still -> use lastDirection
+        // (lastDirection starts as Vector2.down and is only ever set to a non-zero value)
+        Vector2 attackDirection = moveInput != Vector2.zero ? moveInput : lastDirection;
 
-            // If still zero (shouldn't happen with default), use down
-            if (attackDirection == Vector2.zero)
-            {
-                attackDirection = Vector2.down;
-            }
-        }
-
-        // Update animator with attack direction
-        animator.SetFloat("InputX", attackDirection.x);
-        animator.SetFloat("InputY", attackDirection.y);
+        animator.SetFloat(AnimationStrings.InputX, attackDirection.x);
+        animator.SetFloat(AnimationStrings.InputY, attackDirection.y);
     }
 
     // Called by Animation Event at the end of attack animation
     public void EndAttack()
     {
         isAttacking = false;
-        animator.SetBool("isAttacking", false);
+        animator.SetBool(AnimationStrings.IsAttacking, false);
 
         // Restore movement input
-        animator.SetFloat("InputX", moveInput.x);
-        animator.SetFloat("InputY", moveInput.y);
+        animator.SetFloat(AnimationStrings.InputX, moveInput.x);
+        animator.SetFloat(AnimationStrings.InputY, moveInput.y);
+        animator.SetBool(AnimationStrings.IsWalking, moveInput != Vector2.zero);
+    }
 
-        if (moveInput != Vector2.zero)
-        {
-            animator.SetBool("isWalking", true);
-        }
-        else
-        {
-            animator.SetBool("isWalking", false);
-        }
+    public void ApplyKnockback(Vector2 direction, float force, float duration)
+    {
+        isKnockedBack = true;
+        knockbackEndTime = Time.time + duration;
+
+        rb.linearVelocity = Vector2.zero;
+        rb.AddForce(direction.normalized * force, ForceMode2D.Impulse);
     }
 }
-
-// private bool isKnockedBack;
-// private float knockbackEndTime;
-
-// void Update()
-// {
-//     // Let physics own the velocity while being knocked back
-//     if (isKnockedBack)
-//     {
-//         if (Time.time >= knockbackEndTime)
-//             isKnockedBack = false;
-//         else
-//             return;
-//     }
-
-//     if (!isAttacking)
-//         rb.linearVelocity = moveInput * moveSpeed;
-//     else
-//         rb.linearVelocity = Vector2.zero;
-// }
-
-// public void ApplyKnockback(Vector2 direction, float force, float duration)
-// {
-//     isKnockedBack = true;
-//     knockbackEndTime = Time.time + duration;
-
-//     rb.linearVelocity = Vector2.zero;
-//     rb.AddForce(direction.normalized * force, ForceMode2D.Impulse);
-// }

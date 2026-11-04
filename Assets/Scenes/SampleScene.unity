@@ -12129,11 +12129,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5509189c7ac3ad54facf2248c61b6855, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  playerTransparentTime: 0.5
   player: {fileID: 991584001}
   speed: 1
   detectionRadius: 0.5
   biteZoneOffset: {x: -0.65, y: -0.3}
   biteZoneSize: {x: 0.28, y: 0.75}
+  knockbackForce: 8
+  knockbackDuration: 0.2
   _hasTarget: 0
 --- !u!50 &1918118245
 Rigidbody2D:

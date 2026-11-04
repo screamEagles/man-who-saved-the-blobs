@@ -1,11 +1,15 @@
+using System.Collections;
 using UnityEngine;
 
 public class Slimeny : MonoBehaviour
 {
+    public float playerTransparentTime = 4;
     // public DetectionZone biteZone;  // For attacking (kept as-is)
     Animator animator;
     Rigidbody2D rb;
     Transform playerTransform;
+    Transform selfTransform;
+    SpriteRenderer playerSprite;
 
     public GameObject player;
     public float speed = 2f;
@@ -17,6 +21,16 @@ public class Slimeny : MonoBehaviour
     [Tooltip("Full width and height of the bite rectangle.")]
     [SerializeField] private Vector2 biteZoneSize = new Vector2(0.8f, 0.5f);
 
+    [Header("Knockback")]
+    [SerializeField] private float knockbackForce = 8f;
+    [SerializeField] private float knockbackDuration = 0.2f;
+
+    private static readonly int CanMoveHash = Animator.StringToHash("canMove");
+
+    private PlayerMovement playerMovement;
+    private Coroutine transparentRoutine;
+    private float transparentUntil;
+
     public bool _hasTarget = false;
 
     public bool HasTarget
@@ -24,83 +38,86 @@ public class Slimeny : MonoBehaviour
         get { return _hasTarget; }
         private set
         {
+            bool justAcquired = value && _hasTarget;
+
             _hasTarget = value;
-            animator.SetBool("hasTarget", value);
+
+            // animator.SetBool("hasTarget", value);
+
+            if (justAcquired)
+            {
+                KnockbackPlayer();
+                TurnTransparent();
+            }
         }
     }
 
     public bool PlayerInBiteZone { get; private set; }
 
-    public bool CanMove
-    {
-        get
-        {
-            try { return animator.GetBool("canMove"); }
-            catch { return true; }
-        }
-    }
+    public bool CanMove => animator == null || animator.GetBool(CanMoveHash);
 
     private void Awake()
     {
+        selfTransform = transform;
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
 
         if (player != null)
-            playerTransform = player.transform;
+            CachePlayer();
+    }
+
+    private void CachePlayer()
+    {
+        playerTransform = player.transform;
+        playerMovement = player.GetComponent<PlayerMovement>();
+        playerSprite = player.GetComponent<SpriteRenderer>();
     }
 
     void Update()
     {
         if (playerTransform == null) return;
 
-        // --- Approach detection (still a radius, that's fine) ---
-        Vector2 mouthOrigin = transform.TransformPoint(biteZoneOffset);
-        float distance = Vector2.Distance(mouthOrigin, playerTransform.position);
-        HasTarget = distance < detectionRadius;
+        // --- Approach detection (squared distance, no sqrt) ---
+        Vector2 mouthOrigin = selfTransform.TransformPoint(biteZoneOffset);
+        Vector2 toPlayer = (Vector2)playerTransform.position - mouthOrigin;
+        HasTarget = toPlayer.sqrMagnitude < detectionRadius * detectionRadius;
 
         // --- Bite detection (rectangle in front of the mouth) ---
         PlayerInBiteZone = CheckBiteZone();
-        // HasTarget = PlayerInBiteZone;
     }
 
     private bool CheckBiteZone()
     {
-        // Convert the player's world position into Slimeny's local space.
-        // After flipping (localScale.x = -1), local +X is still "forward",
-        // so the box always comes out of the mouth.
-        Vector3 local = transform.InverseTransformPoint(playerTransform.position);
+        Vector3 local = selfTransform.InverseTransformPoint(playerTransform.position);
 
-        float halfW = biteZoneSize.x * 0.5f;
-        float halfH = biteZoneSize.y * 0.5f;
-
-        bool insideX = Mathf.Abs(local.x - biteZoneOffset.x) <= halfW;
-        bool insideY = Mathf.Abs(local.y - biteZoneOffset.y) <= halfH;
-
-        return insideX && insideY;
+        return Mathf.Abs(local.x - biteZoneOffset.x) <= biteZoneSize.x * 0.5f
+            && Mathf.Abs(local.y - biteZoneOffset.y) <= biteZoneSize.y * 0.5f;
     }
 
     void FixedUpdate()
     {
         if (playerTransform == null)
         {
-            if (player != null) playerTransform = player.transform;
+            if (player != null) CachePlayer();
             else return;
         }
 
+        Vector3 selfPos = selfTransform.position;
+        Vector3 playerPos = playerTransform.position;
+
         // --- Flip sprite so it faces the player on the X axis ---
-        float dx = playerTransform.position.x - transform.position.x;
+        float dx = playerPos.x - selfPos.x;
         if (Mathf.Abs(dx) > 0.01f)
         {
-            Vector3 scale = transform.localScale;
+            Vector3 scale = selfTransform.localScale;
             scale.x = -(Mathf.Sign(dx) * Mathf.Abs(scale.x));
-            transform.localScale = scale;
+            selfTransform.localScale = scale;
         }
 
         if (CanMove)
         {
-            Vector2 direction = (playerTransform.position - transform.position).normalized;
-            Vector2 targetPosition = rb.position + direction * speed * Time.fixedDeltaTime;
-            rb.MovePosition(targetPosition);
+            Vector2 direction = ((Vector2)(playerPos - selfPos)).normalized;
+            rb.MovePosition(rb.position + direction * (speed * Time.fixedDeltaTime));
         }
     }
 
@@ -117,5 +134,40 @@ public class Slimeny : MonoBehaviour
         Gizmos.DrawWireCube(biteZoneOffset, biteZoneSize);
 
         Gizmos.matrix = old;
+    }
+
+    private void KnockbackPlayer()
+    {
+        if (playerMovement == null) return;
+
+        Vector2 direction = playerTransform.position - selfTransform.position;
+        playerMovement.ApplyKnockback(direction, knockbackForce, knockbackDuration);
+    }
+
+    // Extends the timer; only one coroutine ever runs.
+    private void TurnTransparent()
+    {
+        transparentUntil = Time.unscaledTime + playerTransparentTime;
+        if (transparentRoutine == null)
+            transparentRoutine = StartCoroutine(TransparentRoutine());
+    }
+
+    private IEnumerator TransparentRoutine()
+    {
+        SetPlayerAlpha(0.5f);
+
+        while (Time.unscaledTime < transparentUntil)
+            yield return null;
+
+        SetPlayerAlpha(1f);
+        transparentRoutine = null;
+    }
+
+    private void SetPlayerAlpha(float a)
+    {
+        if (playerSprite == null) return;
+        Color c = playerSprite.color;
+        c.a = a;
+        playerSprite.color = c;
     }
 }
